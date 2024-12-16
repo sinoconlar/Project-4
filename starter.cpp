@@ -93,8 +93,8 @@ public:
     // set `cols` (columns) is zero if there are no rows, prevents crash with empty boards.
     int cols = rows == 0 ? 0 : board[0].size();
     // iterate through all positions on the chessboard printing to the console
-    for (int col = 0; col < cols; col++) {
-      for (int row = 0; row < rows; row++) {
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < cols; col++) {
         for (auto &move : moves) { // if a position is in the potential move set, highlight positions in red
           if (move.x == row && move.y == col) {
             std::cout << BG_RED;
@@ -389,10 +389,36 @@ public:
 void BoardManager::prepareBoard() {
   // create an 8x8 chessboard defaulting to null pointers of IGamePiece objects
   board = std::vector<std::vector<IGamePiece *>>(8, std::vector<IGamePiece *>(8, nullptr));
-  // TODO add pieces to the board here
-  board[4][4] = new Plusser(); // example imaginary piece (defaults to black)
-  board[3][2] = new Plusser(); // example imaginary piece (white)
-  board[3][2]->isWhite = true;
+  // [row][column]
+  // Row 0 (Black pieces)
+  board[0][0] = new Rook(false, 0, 0); // Black Rook
+  board[0][1] = new Knight(false, 0, 1); // Black Knight
+  board[0][2] = new Bishop(false, 0, 2); // Black Bishop
+  board[0][3] = new Queen(false, 0, 3); // Black Queen
+  board[0][4] = new King(false, 0, 4); // Black King
+  board[0][5] = new Bishop(false, 0, 5); // Black Bishop
+  board[0][6] = new Knight(false, 0, 6); // Black Knight
+  board[0][7] = new Rook(false, 0, 7); // Black Rook
+
+  // Row 1 (Black Pawns)
+  for (int i = 0; i < 8; i++) {
+    board[1][i] = new Pawn(false, 1, i);
+  }
+
+  // Row 6 (White Pawns)
+  for (int i = 0; i < 8; i++) {
+    board[6][i] = new Pawn(true, 6, i);
+  }
+
+  // Row 7 (White Pieces)
+  board[7][0] = new Rook(true, 7, 0);
+  board[7][1] = new Knight(true, 7, 1);
+  board[7][2] = new Bishop(true, 7, 2);
+  board[7][3] = new Queen(true, 7, 3);
+  board[7][4] = new King(true, 7, 4);
+  board[7][5] = new Bishop(true, 7, 5);
+  board[7][6] = new Knight(true, 7, 6);
+  board[7][7] = new Rook(true, 7, 7);
 }
 
 // you shouldnt need to modify main(), but you are free to change it if you want
