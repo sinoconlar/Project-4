@@ -23,7 +23,7 @@ const std::string QUEEN = "q ";
 const std::string KING = "k ";
 const std::string PAWN = "p ";
 const std::string BK_ROOK = "R ";
-const std::string BK_KNIGHT = "n ";
+const std::string BK_KNIGHT = "N ";
 const std::string BK_BISHOP = "B ";
 const std::string BK_QUEEN = "Q ";
 const std::string BK_KING = "K ";
@@ -178,6 +178,209 @@ public:
     moves.push_back(Position(position.x, position.y - 1));
     // does not have logic to prevent moves attacking own pieces
     // does not have any logic to prevent moves jumping off the board... could cause a crash.
+    return moves;
+  }
+};
+
+class King : public IGamePiece {
+public:
+  King(bool isWhite, int x, int y) {
+    this->isWhite = isWhite;
+    this->position = Position(x, y);
+  }
+
+  // Override getName to return the name of the piece
+  std::string getName() override {
+    return (isWhite ? "White King" : "Black King");
+  }
+
+  // Override render to return a representation of the piece
+  std::string render() override {
+    return isWhite ? KING : BK_KING; // Using ASCII for display
+  }
+
+  // Override getPotentialMoves to return possible moves for a King
+  std::vector<Position> getPotentialMoves() override {
+    std::vector<Position> moves;
+    
+    // Moves one square in any direction.
+    int kingMoves[8][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, 
+                           {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+    for (auto move : kingMoves) {
+      moves.push_back(Position(position.x + move[0], position.y + move[1]));
+    }
+
+    return moves;
+  }
+};
+
+class Knight : public IGamePiece {
+public:
+  Knight(bool isWhite, int x, int y) {
+    this->isWhite = isWhite;
+    this->position = Position(x, y);
+  }
+
+  // Override getName to return the name of the piece
+  std::string getName() override {
+    return (isWhite ? "White Knight" : "Black Knight");
+  }
+
+  // Override render to return a representation of the piece
+  std::string render() override {
+    return isWhite ? KNIGHT : BK_KNIGHT; // Using ASCII for display
+  }
+
+  // Override getPotentialMoves to return possible moves for a Knight
+  std::vector<Position> getPotentialMoves() override {
+    std::vector<Position> moves;
+    
+    // Moves in an L-shape (2 squares in one direction and 1 square in a perpendicular direction).
+    int knightMoves[8][2] = {{2, 1}, {2, -1}, {-2, 1}, {-2, -1}, 
+                             {1, 2}, {1, -2}, {-1, 2}, {-1, -2}};
+    for (auto move : knightMoves) {
+      moves.push_back(Position(position.x + move[0], position.y + move[1]));
+    }
+
+    return moves;
+  }
+};
+
+class Pawn : public IGamePiece {
+public:
+  Pawn(bool isWhite, int x, int y) {
+    this->isWhite = isWhite;
+    this->position = Position(x, y);
+  }
+
+  // Override getName to return the name of the piece
+  std::string getName() override {
+    return (isWhite ? "White Pawn" : "Black Pawn");
+  }
+
+  // Override render to return a representation of the piece
+  std::string render() override {
+    return isWhite ? PAWN : BK_PAWN; // Using ASCII for display
+  }
+
+  // Override getPotentialMoves to return possible moves for a Pawn
+  std::vector<Position> getPotentialMoves() override {
+    std::vector<Position> moves;
+    
+    // Moves forward one square (or two squares from its starting position) and captures diagonally.
+    int direction = isWhite ? 1 : -1;  // White pawns move up, black pawns move down
+    moves.push_back(Position(position.x + direction, position.y));  // move forward by 1
+    if ((isWhite && position.x == 1) || (!isWhite && position.x == 6)) {
+      moves.push_back(Position(position.x + 2 * direction, position.y));  // initial 2-square move
+    }
+
+    return moves;
+  }
+};
+
+class Rook : public IGamePiece {
+public:
+  Rook(bool isWhite, int x, int y) {
+    this->isWhite = isWhite;
+    this->position = Position(x, y);
+  }
+
+  // Override getName to return the name of the piece
+  std::string getName() override {
+    return (isWhite ? "White Rook" : "Black Rook");
+  }
+
+  // Override render to return a representation of the piece
+  std::string render() override {
+    return isWhite ? ROOK : BK_ROOK; // Using ASCII for display
+  }
+
+  // Override getPotentialMoves to return possible moves for a Rook
+  std::vector<Position> getPotentialMoves() override {
+    std::vector<Position> moves;
+    
+    // Add horizontal and vertical moves (up, down, left, right)
+    for (int i = 1; i < 8; ++i) {
+      // Right move
+      moves.push_back(Position(position.x + i, position.y));
+      // Left move
+      moves.push_back(Position(position.x - i, position.y));
+      // Up move
+      moves.push_back(Position(position.x, position.y + i));
+      // Down move
+      moves.push_back(Position(position.x, position.y - i));
+    }
+
+    return moves;
+  }
+};
+
+class Bishop : public IGamePiece {
+public:
+  Bishop(bool isWhite, int x, int y) {
+    this->isWhite = isWhite;
+    this->position = Position(x, y);
+  }
+
+  // Override getName to return the name of the piece
+  std::string getName() override {
+    return (isWhite ? "White Bishop" : "Black Bishop");
+  }
+
+  // Override render to return a representation of the piece
+  std::string render() override {
+    return isWhite ? BISHOP : BK_BISHOP; // Using ASCII for display
+  }
+
+  // Override getPotentialMoves to return possible moves for a Bishop
+  std::vector<Position> getPotentialMoves() override {
+    std::vector<Position> moves;
+    
+    // Moves diagonally across the board.
+    for (int i = 1; i < 8; ++i) {
+      moves.push_back(Position(position.x + i, position.y + i)); // top-right
+      moves.push_back(Position(position.x - i, position.y + i)); // top-left
+      moves.push_back(Position(position.x + i, position.y - i)); // bottom-right
+      moves.push_back(Position(position.x - i, position.y - i)); // bottom-left
+    }
+
+    return moves;
+  }
+};
+
+class Queen : public IGamePiece {
+public:
+  Queen(bool isWhite, int x, int y) {
+    this->isWhite = isWhite;
+    this->position = Position(x, y);
+  }
+
+  // Override getName to return the name of the piece
+  std::string getName() override {
+    return (isWhite ? "White Queen" : "Black Queen");
+  }
+
+  // Override render to return a representation of the piece
+  std::string render() override {
+    return isWhite ? QUEEN : BK_QUEEN; // Using ASCII for display
+  }
+
+  // Override getPotentialMoves to return possible moves for a Queen
+  std::vector<Position> getPotentialMoves() override {
+    std::vector<Position> moves;
+    
+    // Combines the movements of both Rook and Bishop (moves horizontally, vertically, and diagonally).
+    for (int i = 1; i < 8; ++i) {
+      moves.push_back(Position(position.x + i, position.y)); // move right
+      moves.push_back(Position(position.x - i, position.y)); // move left
+      moves.push_back(Position(position.x, position.y + i)); // move down
+      moves.push_back(Position(position.x, position.y - i)); // move up
+      moves.push_back(Position(position.x + i, position.y + i)); // top-right diagonal
+      moves.push_back(Position(position.x - i, position.y + i)); // top-left diagonal
+      moves.push_back(Position(position.x + i, position.y - i)); // bottom-right diagonal
+      moves.push_back(Position(position.x - i, position.y - i)); // bottom-left diagonal
+    }
+
     return moves;
   }
 };
