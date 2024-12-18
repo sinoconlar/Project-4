@@ -1,6 +1,11 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+// ifdef is a compiler flag, to control when the compiler will include specific lines of code
+// in this case, we are going to import windows headers only on windows systems
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 // color code constants https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 // backgrounds
@@ -82,9 +87,7 @@ public:
   void prepareBoard();
 
   // getAtPosition returns a pointer to the IGamePiece located at the specified position on the board
-  IGamePiece *const getAtPosition(int row, int col) {
-    return board[row][col];
-  }
+  IGamePiece *const getAtPosition(int row, int col) { return board[row][col]; }
 
   // renderBoard prints a colored grid to the terminal representing a chessboard with pieces
   // this also adds highlights for the cursor, selected pieces, and potential moves when applicable
@@ -93,8 +96,8 @@ public:
     // set `cols` (columns) is zero if there are no rows, prevents crash with empty boards.
     int cols = rows == 0 ? 0 : board[0].size();
     // iterate through all positions on the chessboard printing to the console
-    for (int row = 0; row < rows; row++) {
-      for (int col = 0; col < cols; col++) {
+    for (int col = 0; col < cols; col++) {
+      for (int row = 0; row < rows; row++) {
         for (auto &move : moves) { // if a position is in the potential move set, highlight positions in red
           if (move.x == row && move.y == col) {
             std::cout << BG_RED;
@@ -311,6 +314,14 @@ public:
       moves.push_back(Position(position.x, position.y - i));
     }
 
+    // Filter out moves that go off the board
+    moves.erase(
+      std::remove_if(moves.begin(), moves.end(), [](const Position& pos) {
+        return pos.x < 0 || pos.x >= 8 || pos.y < 0 || pos.y >= 8;
+      }),
+      moves.end()
+    );
+
     return moves;
   }
 };
@@ -423,12 +434,16 @@ void BoardManager::prepareBoard() {
 
 // you shouldnt need to modify main(), but you are free to change it if you want
 int main() {
-  system("stty raw -echo"); // Disable line buffering and echo
-  printf("\033[?25l");      // hide the cursor
-  printf("\033[?1049h");    // use alternate screen buffer
+#ifndef _WIN32              // the next line only runs on non-windows systems
+  system("stty raw -echo"); // Disable line buffering and echo on linux/macos
+#else
+  SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT)); // disable line buffering and echo on windows
+#endif
+  printf("\033[?25l");   // hide the cursor
+  printf("\033[?1049h"); // use alternate screen buffer
   // populate terminal before starting...
   std::cout << BG_BLACK << RESET; // Clear screen and use dark background
-  printf("Controls: Arrow Keys, Space or Enter to Select ('q' to quit)\n\r");
+  printf("Controls: Arrow Keys, Space to Select ('q' to quit)\n\r");
   boardManager.prepareBoard();      // populate chessboard
   Position cursor = Position(0, 0); // start cursor in top left corner
 
@@ -442,10 +457,9 @@ int main() {
     char c = std::cin.get(); // wait for keyboard input
     // ... after user enters a key.
     std::cout << BG_BLACK << RESET;                                             // Clear screen and use dark background
-    printf("Controls: Arrow Keys, Space or Enter to Select ('q' to quit)\n\r"); // print help text at top
+    printf("Controls: Arrow Keys, Space to Select ('q' to quit)\n\r"); // print help text at top
     // process user input
-    if (c == '\033') { // if control characterwas pressed, we need to capture the following control characters and
-                       // process them
+    if (c == '\033') { // if control characterwas pressed, we need to capture the following control characters and process them
       char seq1 = std::cin.get();
       char seq2 = std::cin.get();
       if (seq1 == '[') { // control character may be an arrow if sequence starts with `\033[`
@@ -480,9 +494,8 @@ int main() {
           status += "Deselected";
         selectedPiece = nullptr; // clear the selectedPiece and the potential moves list after any selection is made
         moves = std::vector<Position>();
-      } else { // if a piece is not currently selected
-        if (boardManager.getAtPosition(cursor.x, cursor.y) ==
-            nullptr) { // do nothing but update status message if an empty space is selected
+      } else {                                                           // if a piece is not currently selected
+        if (boardManager.getAtPosition(cursor.x, cursor.y) == nullptr) { // do nothing but update status message if an empty space is selected
           status += "Empty space selected";
         } else { // set the selectedPiece reference and update the potentialmoves list for the piece
           selectedPiece = boardManager.getAtPosition(cursor.x, cursor.y);
