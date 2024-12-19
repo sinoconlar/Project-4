@@ -175,12 +175,29 @@ public:
   virtual std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     // add potential moves
-    moves.push_back(Position(position.x + 1, position.y));
-    moves.push_back(Position(position.x - 1, position.y));
-    moves.push_back(Position(position.x, position.y + 1));
-    moves.push_back(Position(position.x, position.y - 1));
-    // does not have logic to prevent moves attacking own pieces
-    // does not have any logic to prevent moves jumping off the board... could cause a crash.
+    int potentialMoves[4][2] = {
+      {position.x + 1, position.y}, // right
+      {position.x - 1, position.y}, // left
+      {position.x, position.y + 1}, // down
+      {position.x, position.y - 1}  // up
+    };
+
+    for (auto move : potentialMoves) {
+      int x = move[0];
+      int y = move[1];
+
+      // Check if the move is within the bounds of the board
+      if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+        // If there is a piece at the target position, check if it belongs to the same team
+        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+          continue;  // Skip the move if the target piece is the same color
+        }
+        // Add valid move
+        moves.push_back(Position(x, y));
+      }
+    }
+
     return moves;
   }
 };
@@ -209,8 +226,21 @@ public:
     // Moves one square in any direction.
     int kingMoves[8][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, 
                            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+
     for (auto move : kingMoves) {
-      moves.push_back(Position(position.x + move[0], position.y + move[1]));
+        int x = position.x + move[0];
+        int y = position.y + move[1];
+
+        // Check if the move is within the bounds of the board
+        if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+            IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+            // If there is a piece at the target position, check if it belongs to the same team
+            if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+                continue;  // Skip the move if the target piece is the same color
+            }
+            // Add valid move
+            moves.push_back(Position(x, y));
+        }
     }
 
     return moves;
@@ -238,19 +268,36 @@ public:
   std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     
-    // Moves in an L-shape (2 squares in one direction and 1 square in a perpendicular direction).
-    int knightMoves[8][2] = {{2, 1}, {2, -1}, {-2, 1}, {-2, -1}, 
-                             {1, 2}, {1, -2}, {-1, 2}, {-1, -2}};
+    // Define all potential knight moves in an L-shape
+    int knightMoves[8][2] = {
+      {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+      {1, 2}, {1, -2}, {-1, 2}, {-1, -2}
+    };
+
+    // Check all potential moves
     for (auto move : knightMoves) {
-      moves.push_back(Position(position.x + move[0], position.y + move[1]));
+      Position newPos(position.x + move[0], position.y + move[1]);
+      
+      // Ensure the new position is within bounds of the chessboard
+      if (newPos.x >= 0 && newPos.x < 8 && newPos.y >= 0 && newPos.y < 8) {
+        IGamePiece *pieceAtTarget = boardManager.getAtPosition(newPos.x, newPos.y);
+        
+        // If the target position is empty or occupied by an opponent's piece, add the move
+        if (pieceAtTarget == nullptr || pieceAtTarget->isWhite != this->isWhite) {
+          moves.push_back(newPos);
+        }
+      }
     }
 
     return moves;
   }
 };
 
+// The piece implements the "first-move" rule
 class Pawn : public IGamePiece {
 public:
+  bool hasMoved = false; // Track if the pawn has moved
+
   Pawn(bool isWhite, int x, int y) {
     this->isWhite = isWhite;
     this->position = Position(x, y);
@@ -270,13 +317,27 @@ public:
   std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     
-    // Moves forward one square (or two squares from its starting position) and captures diagonally.
-    int direction = isWhite ? 1 : -1;  // White pawns move up, black pawns move down
-    moves.push_back(Position(position.x + direction, position.y));  // move forward by 1
-    if ((isWhite && position.x == 1) || (!isWhite && position.x == 6)) {
-      moves.push_back(Position(position.x + 2 * direction, position.y));  // initial 2-square move
-    }
+    int potentialMoves[2][2] = {
+      {position.x, position.y + 1}, // down
+      {position.x, position.y - 1}  // up
+    };
 
+    for (auto move : potentialMoves) {
+      int x = move[0];
+      int y = move[1];
+
+      // Check if the move is within the bounds of the board
+      if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+        // If there is a piece at the target position, check if it belongs to the same team
+        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+          continue;  // Skip the move if the target piece is the same color
+        }
+        // Add valid move
+        moves.push_back(Position(x, y));
+      }
+    }
+    
     return moves;
   }
 };
@@ -400,35 +461,35 @@ public:
 void BoardManager::prepareBoard() {
   // create an 8x8 chessboard defaulting to null pointers of IGamePiece objects
   board = std::vector<std::vector<IGamePiece *>>(8, std::vector<IGamePiece *>(8, nullptr));
-  // [row][column]
+  // [column][row]
   // Row 0 (Black pieces)
   board[0][0] = new Rook(false, 0, 0); // Black Rook
-  board[0][1] = new Knight(false, 0, 1); // Black Knight
-  board[0][2] = new Bishop(false, 0, 2); // Black Bishop
-  board[0][3] = new Queen(false, 0, 3); // Black Queen
-  board[0][4] = new King(false, 0, 4); // Black King
-  board[0][5] = new Bishop(false, 0, 5); // Black Bishop
-  board[0][6] = new Knight(false, 0, 6); // Black Knight
-  board[0][7] = new Rook(false, 0, 7); // Black Rook
+  board[1][0] = new Knight(false, 1, 0); // Black Knight
+  board[2][0] = new Bishop(false, 2, 0); // Black Bishop
+  board[3][0] = new Queen(false, 3, 0); // Black Queen
+  board[4][0] = new King(false, 4, 0); // Black King
+  board[5][0] = new Bishop(false, 5, 0); // Black Bishop
+  board[6][0] = new Knight(false, 6, 0); // Black Knight
+  board[7][0] = new Rook(false, 7, 0); // Black Rook
 
   // Row 1 (Black Pawns)
   for (int i = 0; i < 8; i++) {
-    board[1][i] = new Pawn(false, 1, i);
+    board[i][1] = new Pawn(false, i, 1);
   }
 
   // Row 6 (White Pawns)
   for (int i = 0; i < 8; i++) {
-    board[6][i] = new Pawn(true, 6, i);
+    board[i][6] = new Pawn(true, i, 6);
   }
 
   // Row 7 (White Pieces)
-  board[7][0] = new Rook(true, 7, 0);
-  board[7][1] = new Knight(true, 7, 1);
-  board[7][2] = new Bishop(true, 7, 2);
-  board[7][3] = new Queen(true, 7, 3);
-  board[7][4] = new King(true, 7, 4);
-  board[7][5] = new Bishop(true, 7, 5);
-  board[7][6] = new Knight(true, 7, 6);
+  board[0][7] = new Rook(true, 0, 7);
+  board[1][7] = new Knight(true, 1, 7);
+  board[2][7] = new Bishop(true, 2, 7);
+  board[3][7] = new Queen(true, 3, 7);
+  board[4][7] = new King(true, 4, 7);
+  board[5][7] = new Bishop(true, 5, 7);
+  board[6][7] = new Knight(true, 6, 7);
   board[7][7] = new Rook(true, 7, 7);
 }
 
