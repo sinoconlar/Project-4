@@ -157,8 +157,7 @@ public:
 // so all gamePiece implemenentations can access this object
 static BoardManager boardManager;
 
-// represents a imaginary piece called a "Plusser"
-// this is an example demonstrating how you could implement a real chess piece
+/* example
 class Plusser : public IGamePiece {
 public:
   std::string getName() override {
@@ -197,11 +196,10 @@ public:
         moves.push_back(Position(x, y));
       }
     }
-
     return moves;
   }
 };
-
+*/
 class King : public IGamePiece {
 public:
   King(bool isWhite, int x, int y) {
@@ -228,21 +226,20 @@ public:
                            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
 
     for (auto move : kingMoves) {
-        int x = position.x + move[0];
-        int y = position.y + move[1];
+      int x = position.x + move[0];
+      int y = position.y + move[1];
 
-        // Check if the move is within the bounds of the board
-        if (x >= 0 && x < 8 && y >= 0 && y < 8) {
-            IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
-            // If there is a piece at the target position, check if it belongs to the same team
-            if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
-                continue;  // Skip the move if the target piece is the same color
-            }
-            // Add valid move
-            moves.push_back(Position(x, y));
+      // Check if the move is within the bounds of the board
+      if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+        // If there is a piece at the target position, check if it belongs to the same team
+        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+            continue;  // Skip the move if the target piece is the same color
         }
+        // Add valid move
+        moves.push_back(Position(x, y));
+      }
     }
-
     return moves;
   }
 };
@@ -288,12 +285,11 @@ public:
         }
       }
     }
-
     return moves;
   }
 };
 
-// The piece implements the "first-move" rule
+// The piece implements the "first-move" rule (WIP)
 class Pawn : public IGamePiece {
 public:
   bool hasMoved = false; // Track if the pawn has moved
@@ -317,28 +313,49 @@ public:
   std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     
-    int potentialMoves[2][2] = {
-      {position.x, position.y + 1}, // down
-      {position.x, position.y - 1}  // up
-    };
+  // Define possible move directions based on color
+  int direction = isWhite ? -1 : 1;  // White moves up (y - 1), Black moves down (y + 1)
+  int startRow = isWhite ? 6 : 1;  // White pawns start at row 6, Black pawns start at row 1
+  
+  // Move one square forward
+  int forwardX = position.x;
+  int forwardY = position.y + direction;
+  if (forwardY >= 0 && forwardY < 8) {
+    IGamePiece *targetPiece = boardManager.getAtPosition(forwardX, forwardY);
+    // Only move if the target is empty
+    if (targetPiece == nullptr) {
+      moves.push_back(Position(forwardX, forwardY));
+    }
+  }
 
-    for (auto move : potentialMoves) {
-      int x = move[0];
-      int y = move[1];
-
-      // Check if the move is within the bounds of the board
-      if (x >= 0 && x < 8 && y >= 0 && y < 8) {
-        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
-        // If there is a piece at the target position, check if it belongs to the same team
-        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
-          continue;  // Skip the move if the target piece is the same color
-        }
-        // Add valid move
-        moves.push_back(Position(x, y));
+  // If the pawn hasn't moved yet, allow moving two squares forward
+  if (!hasMoved) {
+    int doubleForwardY = position.y + 2 * direction;
+    if (doubleForwardY >= 0 && doubleForwardY < 8) {
+      IGamePiece *targetPiece = boardManager.getAtPosition(forwardX, doubleForwardY);
+      if (targetPiece == nullptr) {
+        moves.push_back(Position(forwardX, doubleForwardY));
       }
     }
-    
+  }
+
+  // Pawn captures diagonally
+  int captureX[2] = { position.x + 1, position.x - 1 };  // Capture diagonally to the right or left
+  for (int i = 0; i < 2; ++i) {
+    int captureY = position.y + direction;  // Captures go in the same direction as forward movement
+    if (captureX[i] >= 0 && captureX[i] < 8 && captureY >= 0 && captureY < 8) {
+      IGamePiece *targetPiece = boardManager.getAtPosition(captureX[i], captureY);
+      if (targetPiece != nullptr && targetPiece->isWhite != this->isWhite) {
+        moves.push_back(Position(captureX[i], captureY));  // Capture if the target is an opponent's piece
+      }
+    }
+  }
     return moves;
+  }
+
+  // After the pawn moves, update the hasMoved status
+  void movePiece() {
+    hasMoved = true;
   }
 };
 
@@ -363,26 +380,44 @@ public:
   std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     
-    // Add horizontal and vertical moves (up, down, left, right)
-    for (int i = 1; i < 8; ++i) {
-      // Right move
-      moves.push_back(Position(position.x + i, position.y));
-      // Left move
-      moves.push_back(Position(position.x - i, position.y));
-      // Up move
-      moves.push_back(Position(position.x, position.y + i));
-      // Down move
-      moves.push_back(Position(position.x, position.y - i));
+    int directions[4][2] = {
+      {1, 0},  // Right
+      {-1, 0}, // Left
+      {0, 1},  // Down
+      {0, -1}  // Up
+    };
+
+    // Check all directions
+    for (auto direction : directions) {
+      int x = position.x;
+      int y = position.y;
+
+      // Move in the current direction until hitting the edge or a piece
+      while (true) {
+        x += direction[0];
+        y += direction[1];
+
+        // Check if the new position is within bounds
+        if (x < 0 || x >= 8 || y < 0 || y >= 8) {
+          break; // Stop if the move goes out of bounds
+        }
+
+        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+
+        // If the target position is occupied by an allied piece, stop in this direction
+        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+          break; // Blocked by a friendly piece, stop in this direction
+        }
+
+        // If the target position is empty or occupied by an opponent's piece, add the move
+        moves.push_back(Position(x, y));
+
+        // If the target position is occupied by an opponent's piece, stop in this direction
+        if (targetPiece != nullptr && targetPiece->isWhite != this->isWhite) {
+          break; // Capture an enemy piece, then stop
+        }
+      }
     }
-
-    // Filter out moves that go off the board
-    moves.erase(
-      std::remove_if(moves.begin(), moves.end(), [](const Position& pos) {
-        return pos.x < 0 || pos.x >= 8 || pos.y < 0 || pos.y >= 8;
-      }),
-      moves.end()
-    );
-
     return moves;
   }
 };
@@ -408,18 +443,49 @@ public:
   std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     
-    // Moves diagonally across the board.
-    for (int i = 1; i < 8; ++i) {
-      moves.push_back(Position(position.x + i, position.y + i)); // top-right
-      moves.push_back(Position(position.x - i, position.y + i)); // top-left
-      moves.push_back(Position(position.x + i, position.y - i)); // bottom-right
-      moves.push_back(Position(position.x - i, position.y - i)); // bottom-left
-    }
+    int directions[4][2] = {
+      {1, 1},   // Right-Down
+      {-1, 1},  // Left-Down
+      {1, -1},  // Right-Up
+      {-1, -1}  // Left-Up
+    };
 
+    // Check all four diagonal directions
+    for (auto direction : directions) {
+      int x = position.x;
+      int y = position.y;
+
+      // Move in the current diagonal direction until hitting the edge or a piece
+      while (true) {
+        x += direction[0];
+        y += direction[1];
+
+        // Check if the new position is within bounds
+        if (x < 0 || x >= 8 || y < 0 || y >= 8) {
+          break; // Stop if the move goes out of bounds
+        }
+
+        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+
+        // If the target position is occupied by an allied piece, stop in this direction
+        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+          break; // Blocked by a friendly piece, stop in this direction
+        }
+
+        // If the target position is empty or occupied by an opponent's piece, add the move
+        moves.push_back(Position(x, y));
+
+        // If the target position is occupied by an opponent's piece, stop in this direction
+        if (targetPiece != nullptr && targetPiece->isWhite != this->isWhite) {
+          break; // Capture an enemy piece, then stop
+        }
+      }
+    }
     return moves;
   }
 };
 
+// Combined Rook and Bishop moves
 class Queen : public IGamePiece {
 public:
   Queen(bool isWhite, int x, int y) {
@@ -441,18 +507,49 @@ public:
   std::vector<Position> getPotentialMoves() override {
     std::vector<Position> moves;
     
-    // Combines the movements of both Rook and Bishop (moves horizontally, vertically, and diagonally).
-    for (int i = 1; i < 8; ++i) {
-      moves.push_back(Position(position.x + i, position.y)); // move right
-      moves.push_back(Position(position.x - i, position.y)); // move left
-      moves.push_back(Position(position.x, position.y + i)); // move down
-      moves.push_back(Position(position.x, position.y - i)); // move up
-      moves.push_back(Position(position.x + i, position.y + i)); // top-right diagonal
-      moves.push_back(Position(position.x - i, position.y + i)); // top-left diagonal
-      moves.push_back(Position(position.x + i, position.y - i)); // bottom-right diagonal
-      moves.push_back(Position(position.x - i, position.y - i)); // bottom-left diagonal
-    }
+    // All 8 possible movement directions (combining Rook and Bishop moves)
+    int directions[8][2] = {
+      {1, 0},   // Right (Rook)
+      {-1, 0},  // Left (Rook)
+      {0, 1},   // Down (Rook)
+      {0, -1},  // Up (Rook)
+      {1, 1},   // Right-Down (Bishop)
+      {-1, 1},  // Left-Down (Bishop)
+      {1, -1},  // Right-Up (Bishop)
+      {-1, -1}  // Left-Up (Bishop)
+    };
 
+    // Iterate through all 8 directions (both Rook and Bishop)
+    for (auto direction : directions) {
+      int x = position.x;
+      int y = position.y;
+
+      // Move in the current direction until hitting the edge or a piece
+      while (true) {
+        x += direction[0];
+        y += direction[1];
+
+        // Check if the new position is within bounds
+        if (x < 0 || x >= 8 || y < 0 || y >= 8) {
+          break; // Stop if the move goes out of bounds
+        }
+
+        IGamePiece *targetPiece = boardManager.getAtPosition(x, y);
+
+        // If the target position is occupied by an allied piece, stop in this direction
+        if (targetPiece != nullptr && targetPiece->isWhite == this->isWhite) {
+          break; // Blocked by a friendly piece, stop in this direction
+        }
+
+        // If the target position is empty or occupied by an opponent's piece, add the move
+        moves.push_back(Position(x, y));
+
+        // If the target position is occupied by an opponent's piece, stop in this direction
+        if (targetPiece != nullptr && targetPiece->isWhite != this->isWhite) {
+          break; // Capture an enemy piece, then stop
+        }
+      }
+    }
     return moves;
   }
 };
